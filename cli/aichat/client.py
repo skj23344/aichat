@@ -117,7 +117,7 @@ class ChatClient:
         resp = self._open(messages, stream=False)
         try:
             try:
-                data = json.loads(resp.read().decode("utf-8"))
+                data = json.loads(resp.read().decode("utf-8", "replace"))
             except json.JSONDecodeError as exc:
                 raise ChatError("响应不是合法 JSON") from exc
             try:

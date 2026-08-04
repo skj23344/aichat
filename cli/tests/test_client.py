@@ -50,6 +50,18 @@ class ChatClientTest(unittest.TestCase):
         client = ChatClient(make_settings(), opener=opener)
         self.assertEqual("".join(client.stream_chat([])), "AB")
 
+    def test_stream_top_level_non_dict_is_ignored(self):
+        # 顶层非 dict(如 data: [1,2])应静默忽略,不抛 AttributeError
+        sse = (
+            b'data: [1, 2]\n\n'
+            b'data: {"choices":[{"delta":{"content":"A"}}]}\n\n'
+            b'data: [DONE]\n\n'
+        )
+        opener = mock.Mock()
+        opener.open.return_value = FakeResponse(sse)
+        client = ChatClient(make_settings(), opener=opener)
+        self.assertEqual("".join(client.stream_chat([])), "A")
+
     def test_stream_error_event_raises_chat_error(self):
         sse = (
             b'data: {"choices":[{"delta":{"content":"A"}}]}\n\n'
