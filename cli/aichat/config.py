@@ -31,12 +31,16 @@ class Settings:
 
 
 def load_config_file(path: Path = CONFIG_PATH) -> dict:
-    """读取 INI 配置文件中 [aichat] 段,不存在的文件返回空 dict。"""
+    """读取 INI 配置文件中 [aichat] 段;文件不存在或损坏时返回空 dict。"""
     data = {}
     if not path.exists():
         return data
     parser = configparser.ConfigParser()
-    parser.read(path, encoding="utf-8")
+    try:
+        parser.read(path, encoding="utf-8")
+    except (configparser.Error, OSError, UnicodeDecodeError):
+        # 损坏/非 UTF-8 配置:按无配置处理,避免 traceback
+        return data
     if parser.has_section("aichat"):
         for key in ("provider", "api_key", "base_url", "model"):
             if parser.has_option("aichat", key):

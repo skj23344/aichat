@@ -21,6 +21,12 @@ class ConfigTest(unittest.TestCase):
     def test_load_missing_file_returns_empty(self):
         self.assertEqual(load_config_file(MISSING), {})
 
+    def test_load_corrupt_file_returns_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "rc.ini"
+            p.write_bytes(b"[aichat]\n\xff\xfe\x80provider = deepseek\n")
+            self.assertEqual(load_config_file(p), {})
+
     def test_env_overrides_file(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "rc.ini"

@@ -23,6 +23,16 @@ class FakeResponse(io.BytesIO):
         self.status = 200
 
 
+class RaisingIterResponse:
+    """迭代时抛 OSError(模拟 socket 超时/连接重置)。"""
+
+    def __iter__(self):
+        raise ConnectionResetError("conn reset")
+
+    def close(self):
+        pass
+
+
 class ChatClientTest(unittest.TestCase):
     def test_stream_chat_joins_deltas_and_stops_at_done(self):
         sse = (
@@ -142,6 +152,14 @@ class ChatClientTest(unittest.TestCase):
         self.assertTrue(body["stream"])
         self.assertEqual(body["messages"], [{"role": "user", "content": "hi"}])
         self.assertTrue(req.full_url.endswith("/chat/completions"))
+
+    def test_stream_network_error_raises_chat_error(self):
+        opener = mock.Mock()
+        opener.open.return_value = RaisingIterResponse()
+        client = ChatClient(make_settings(), opener=opener)
+        with self.assertRaises(ChatError) as ctx:
+            list(client.stream_chat([]))
+        self.assertIn("流式读取失败", str(ctx.exception))
 
     def test_chat_non_stream_returns_content(self):
         payload = {"choices": [{"message": {"content": "Full reply"}}]}

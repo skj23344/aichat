@@ -106,20 +106,24 @@ class ChatClient:
         resp = self._open(messages, stream=True)
         data_buf: List[str] = []
         try:
-            for raw in resp:
-                for line in raw.decode("utf-8", "replace").splitlines():
-                    line = line.strip()
-                    if not line:
-                        # 空行:SSE 事件结束,解析累积的 data 块
-                        if data_buf:
-                            yield from self._emit_sse_event("\n".join(data_buf))
-                            data_buf = []
-                        continue
-                    if line.startswith("data:"):
-                        data_buf.append(line[len("data:"):].strip())
-                    # 其他 SSE 字段(comment/event/id)忽略
-            if data_buf:
-                yield from self._emit_sse_event("\n".join(data_buf))
+            try:
+                for raw in resp:
+                    for line in raw.decode("utf-8", "replace").splitlines():
+                        line = line.strip()
+                        if not line:
+                            # 空行:SSE 事件结束,解析累积的 data 块
+                            if data_buf:
+                                yield from self._emit_sse_event("\n".join(data_buf))
+                                data_buf = []
+                            continue
+                        if line.startswith("data:"):
+                            data_buf.append(line[len("data:"):].strip())
+                        # 其他 SSE 字段(comment/event/id)忽略
+                if data_buf:
+                    yield from self._emit_sse_event("\n".join(data_buf))
+            except OSError as exc:
+                # socket 超时/连接重置/截断读取:统一转为 ChatError,避免 traceback
+                raise ChatError(f"流式读取失败: {exc}") from exc
         finally:
             resp.close()
 
