@@ -88,10 +88,21 @@ class ChatClientTest(unittest.TestCase):
 
     def test_custom_provider_without_base_url_raises(self):
         opener = mock.Mock()
-        client = ChatClient(make_settings(provider=PROVIDERS["custom"], base_url=""), opener=opener)
+        client = ChatClient(
+            make_settings(provider=PROVIDERS["custom"], base_url="", model="m"), opener=opener
+        )
         with self.assertRaises(ChatError) as ctx:
             list(client.stream_chat([]))
         self.assertIn("Base URL", str(ctx.exception))
+
+    def test_custom_provider_without_model_raises(self):
+        opener = mock.Mock()
+        client = ChatClient(
+            make_settings(provider=PROVIDERS["custom"], base_url="http://x", model=""), opener=opener
+        )
+        with self.assertRaises(ChatError) as ctx:
+            list(client.stream_chat([]))
+        self.assertIn("模型", str(ctx.exception))
 
     def test_chat_null_message_raises_chat_error(self):
         payload = {"choices": [{"message": None}]}

@@ -43,8 +43,11 @@ class ChatClient:
         return headers
 
     def _payload(self, messages: List[dict], stream: bool) -> dict:
+        model = self.settings.effective_model()
+        if not model:
+            raise ChatError("未配置模型(custom provider 需 --model 或 AICHAT_MODEL)")
         return {
-            "model": self.settings.effective_model(),
+            "model": model,
             "messages": messages,
             "stream": stream,
         }
@@ -83,9 +86,14 @@ class ChatClient:
             message = error.get("message", str(error)) if isinstance(error, dict) else str(error)
             raise ChatError(f"流式响应错误: {message}")
         choices = chunk.get("choices") or []
-        if not choices:
+        if not isinstance(choices, list) or not choices:
             return
-        delta = choices[0].get("delta") or {}
+        choice = choices[0]
+        if not isinstance(choice, dict):
+            return
+        delta = choice.get("delta") or {}
+        if not isinstance(delta, dict):
+            return
         content = delta.get("content")
         if content:
             yield content

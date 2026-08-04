@@ -22,9 +22,15 @@ class SanitizeTest(unittest.TestCase):
         self.assertEqual(_sanitize("\x1b[<5m"), "")
 
     def test_strips_8bit_c1_controls(self):
-        # 8 位 C1:CSI=\x9b, OSC=\x9d(不经 ESC 前缀)
+        # 8 位 C1:CSI=\x9b, OSC=\x9d, DCS=\x90, PM=\x9e, APC=\x9f
         self.assertEqual(_sanitize("\x9b31mred"), "red")
         self.assertEqual(_sanitize("a\x9d0;title\x07b"), "ab")
+        self.assertEqual(_sanitize("a\x90dcs\x9c b"), "a b")
+        self.assertEqual(_sanitize("a\x9epm\x9c b"), "a b")
+        self.assertEqual(_sanitize("a\x9fapc\x9c b"), "a b")
+
+    def test_strips_bel(self):
+        self.assertEqual(_sanitize("a\x07b"), "ab")
 
     def test_strips_carriage_returns(self):
         self.assertEqual(_sanitize("a\rb"), "ab")

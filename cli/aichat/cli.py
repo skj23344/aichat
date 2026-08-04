@@ -25,10 +25,13 @@ def _sanitize(text: str) -> str:
     剩余 ESC 与 8 位 C1 控制符(\x9b=CSI、\x9d=OSC),确保任何
     控制序列都无法到达终端。
     """
+    text = re.sub(r"[\x90\x98\x9e\x9f][^\x9c]*\x9c?", "", text)  # 8 位 DCS/SOS/PM/APC 整段(含内容)
     text = text.replace("\x9b", "\x1b[")  # 8 位 C1 CSI → ESC 前缀形式
     text = text.replace("\x9d", "\x1b]")  # 8 位 C1 OSC → ESC 前缀形式
     text = _ANSI_RE.sub("", text)
+    text = re.sub(r"[\x80-\x9f]", "", text)  # 剩余 8 位 C1(DCS/SOS/PM/APC 等)
     text = text.replace("\x1b", "")  # 兜底:残留 ESC
+    text = text.replace("\x07", "")  # BEL(防响铃骚扰)
     text = text.replace("\r", "")
     return text
 
