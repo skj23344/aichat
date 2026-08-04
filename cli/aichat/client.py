@@ -1,5 +1,6 @@
 """OpenAI 兼容 Chat Completions 客户端(仅标准库,支持流式 SSE)。"""
 
+import http.client
 import json
 import urllib.error
 import urllib.request
@@ -7,7 +8,7 @@ from typing import Iterator, List, Optional
 
 from .config import Settings
 
-# 非流式响应体大小上限(防恶意服务器 OOM)
+# 响应体大小上限(防恶意服务器 OOM):非流式整体与流式累积缓冲共用
 MAX_RESPONSE_BYTES = 10 * 1024 * 1024
 
 
@@ -105,6 +106,7 @@ class ChatClient:
         """流式对话,逐段产出文本增量;支持跨行 data 块,流中出错时抛 ChatError。"""
         resp = self._open(messages, stream=True)
         data_buf: List[str] = []
+        buf_len = 0
         try:
             try:
                 for raw in resp:
@@ -115,14 +117,20 @@ class ChatClient:
                             if data_buf:
                                 yield from self._emit_sse_event("\n".join(data_buf))
                                 data_buf = []
+                                buf_len = 0
                             continue
                         if line.startswith("data:"):
                             data_buf.append(line[len("data:"):].strip())
+                            buf_len += len(line)
+                            if buf_len > MAX_RESPONSE_BYTES:
+                                raise ChatError(
+                                    f"流式响应超过 {MAX_RESPONSE_BYTES // (1024 * 1024)} MiB 上限"
+                                )
                         # 其他 SSE 字段(comment/event/id)忽略
                 if data_buf:
                     yield from self._emit_sse_event("\n".join(data_buf))
-            except OSError as exc:
-                # socket 超时/连接重置/截断读取:统一转为 ChatError,避免 traceback
+            except (OSError, http.client.HTTPException) as exc:
+                # socket 超时/连接重置/IncompleteRead 截断:统一转为 ChatError,避免 traceback
                 raise ChatError(f"流式读取失败: {exc}") from exc
         finally:
             resp.close()
@@ -138,6 +146,8 @@ class ChatClient:
                 data = json.loads(body.decode("utf-8", "replace"))
             except (json.JSONDecodeError, RecursionError) as exc:
                 raise ChatError("响应不是合法 JSON") from exc
+            except (OSError, http.client.HTTPException) as exc:
+                raise ChatError(f"读取响应失败: {exc}") from exc
             try:
                 message = data["choices"][0]["message"]
                 if message is None:

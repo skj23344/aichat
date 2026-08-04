@@ -30,6 +30,7 @@ def _sanitize(text: str) -> str:
     text = text.replace("\x9d", "\x1b]")  # 8 位 C1 OSC → ESC 前缀形式
     text = _ANSI_RE.sub("", text)
     text = re.sub(r"[\x80-\x9f]", "", text)  # 剩余 8 位 C1(DCS/SOS/PM/APC 等)
+    text = re.sub(r"[\u202a-\u202e\u2066-\u2069]", "", text)  # Unicode 双向控制符(防 bidi 伪装)
     text = text.replace("\x1b", "")  # 兜底:残留 ESC
     text = text.replace("\x07", "")  # BEL(防响铃骚扰)
     text = text.replace("\r", "")

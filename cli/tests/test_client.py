@@ -1,10 +1,11 @@
+import http.client
 import io
 import json
 import unittest
 from unittest import mock
 from urllib.error import HTTPError
 
-from aichat.client import ChatClient, ChatError
+from aichat.client import MAX_RESPONSE_BYTES, ChatClient, ChatError
 from aichat.config import Settings
 from aichat.providers import PROVIDERS
 
@@ -24,10 +25,13 @@ class FakeResponse(io.BytesIO):
 
 
 class RaisingIterResponse:
-    """迭代时抛 OSError(模拟 socket 超时/连接重置)。"""
+    """迭代时抛指定异常(模拟 socket 超时/连接重置/IncompleteRead)。"""
+
+    def __init__(self, exc: BaseException):
+        self._exc = exc
 
     def __iter__(self):
-        raise ConnectionResetError("conn reset")
+        raise self._exc
 
     def close(self):
         pass
@@ -155,7 +159,7 @@ class ChatClientTest(unittest.TestCase):
 
     def test_stream_network_error_raises_chat_error(self):
         opener = mock.Mock()
-        opener.open.return_value = RaisingIterResponse()
+        opener.open.return_value = RaisingIterResponse(ConnectionResetError("conn reset"))
         client = ChatClient(make_settings(), opener=opener)
         with self.assertRaises(ChatError) as ctx:
             list(client.stream_chat([]))
@@ -177,6 +181,27 @@ class ChatClientTest(unittest.TestCase):
             with self.assertRaises(ChatError):
                 client.chat([])
 
+    def test_stream_incomplete_read_raises_chat_error(self):
+        opener = mock.Mock()
+        opener.open.return_value = RaisingIterResponse(
+            http.client.IncompleteRead(b"partial")
+        )
+        client = ChatClient(make_settings(), opener=opener)
+        with self.assertRaises(ChatError) as ctx:
+            list(client.stream_chat([]))
+        self.assertIn("流式读取失败", str(ctx.exception))
+
+    def test_stream_buffer_limit_raises_chat_error(self):
+        # 模拟累积 data 缓冲超限(10 MiB 太大,直接构造超限数据不可行;
+        # 用多条 8MiB 行会占用大量内存,故验证单行超限路径)
+        sse = b"data: " + b"x" * (MAX_RESPONSE_BYTES + 1) + b"\n\n"
+        opener = mock.Mock()
+        opener.open.return_value = FakeResponse(sse)
+        client = ChatClient(make_settings(), opener=opener)
+        with self.assertRaises(ChatError) as ctx:
+            list(client.stream_chat([]))
+        self.assertIn("MiB 上限", str(ctx.exception))
+
     def test_chat_non_stream_returns_content(self):
         payload = {"choices": [{"message": {"content": "Full reply"}}]}
         opener = mock.Mock()
@@ -190,10 +215,13 @@ class ChatClientTest(unittest.TestCase):
         opener = mock.Mock()
         opener.open.side_effect = exc
         client = ChatClient(make_settings(), opener=opener)
-        with self.assertRaises(ChatError) as ctx:
-            client.chat([])
-        self.assertIn("401", str(ctx.exception))
-        self.assertIn("Invalid API key", str(ctx.exception))
+        try:
+            with self.assertRaises(ChatError) as ctx:
+                client.chat([])
+            self.assertIn("401", str(ctx.exception))
+            self.assertIn("Invalid API key", str(ctx.exception))
+        finally:
+            exc.close()
 
     def test_missing_api_key_is_allowed(self):
         opener = mock.Mock()

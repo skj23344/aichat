@@ -29,6 +29,11 @@ class SanitizeTest(unittest.TestCase):
         self.assertEqual(_sanitize("a\x9epm\x9c b"), "a b")
         self.assertEqual(_sanitize("a\x9fapc\x9c b"), "a b")
 
+    def test_strips_bidirectional_controls(self):
+        # Unicode 双向控制符(RLO/LRO/PDF 等)防 bidi 伪装
+        self.assertEqual(_sanitize("\u202eevil"), "evil")
+        self.assertEqual(_sanitize("a\u202db"), "ab")
+
     def test_strips_bel(self):
         self.assertEqual(_sanitize("a\x07b"), "ab")
 
