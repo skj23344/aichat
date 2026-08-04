@@ -13,3 +13,11 @@
 keystore.properties
 *.keystore
 *.jks
+reasonix.toml
+
+# Python CLI (cli/)
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/

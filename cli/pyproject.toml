@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aichat-cli"
+version = "1.0.0"
+description = "多厂商 LLM 命令行聊天客户端(OpenAI 兼容 API,零第三方依赖)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+
+[project.scripts]
+aichat = "aichat.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["aichat*"]
