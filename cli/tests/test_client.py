@@ -161,6 +161,22 @@ class ChatClientTest(unittest.TestCase):
             list(client.stream_chat([]))
         self.assertIn("流式读取失败", str(ctx.exception))
 
+    def test_stream_json_recursion_error_is_ignored(self):
+        sse = b'data: {"choices":[{"delta":{"content":"X"}}]}\n\n'
+        opener = mock.Mock()
+        opener.open.return_value = FakeResponse(sse)
+        client = ChatClient(make_settings(), opener=opener)
+        with mock.patch("aichat.client.json.loads", side_effect=RecursionError("deep")):
+            self.assertEqual("".join(client.stream_chat([])), "")
+
+    def test_chat_json_recursion_error_raises_chat_error(self):
+        opener = mock.Mock()
+        opener.open.return_value = FakeResponse(b"{}")
+        client = ChatClient(make_settings(stream=False), opener=opener)
+        with mock.patch("aichat.client.json.loads", side_effect=RecursionError("deep")):
+            with self.assertRaises(ChatError):
+                client.chat([])
+
     def test_chat_non_stream_returns_content(self):
         payload = {"choices": [{"message": {"content": "Full reply"}}]}
         opener = mock.Mock()
