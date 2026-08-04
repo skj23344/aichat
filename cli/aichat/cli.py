@@ -1,12 +1,21 @@
 """aichat 命令行入口:ask / chat / providers。"""
 
 import argparse
+import re
 import sys
 
 from . import __version__
 from .client import ChatClient, ChatError
 from .config import build_settings
 from .providers import PROVIDERS
+
+# 终端注入防护:剥离 ANSI/OSC 控制序列(远端模型输出可能被 prompt injection 操纵)
+_ANSI_RE = re.compile(r"\x1b(?:\[[0-9;?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[()#][0-9A-Z])")
+
+
+def _sanitize(text: str) -> str:
+    """移除 ANSI/OSC 转义序列与裸回车,防止恶意输出注入终端控制。"""
+    return _ANSI_RE.sub("", text).replace("\r", "")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -16,7 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"aichat {__version__}")
     parser.add_argument("--provider", help="provider 名称,如 deepseek/moonshot/qwen/ollama/custom")
-    parser.add_argument("--api-key", help="API Key(优先于环境变量与配置文件)")
+    parser.add_argument("--api-key", help="API Key(优先于环境变量与配置文件;注意会出现在进程列表,敏感场景建议用 AICHAT_API_KEY)")
     parser.add_argument("--base-url", help="API Base URL(覆盖 provider 默认)")
     parser.add_argument("--model", help="模型名(覆盖 provider 默认)")
     parser.add_argument("--no-stream", action="store_true", help="关闭流式输出")
@@ -36,7 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
 def _stream_reply(client: ChatClient, messages: list) -> str:
     parts = []
     for piece in client.stream_chat(messages):
-        print(piece, end="", flush=True)
+        print(_sanitize(piece), end="", flush=True)
         parts.append(piece)
     print()
     return "".join(parts)
@@ -52,7 +61,7 @@ def cmd_ask(args) -> int:
         if settings.stream:
             _stream_reply(client, messages)
         else:
-            print(client.chat(messages))
+            print(_sanitize(client.chat(messages)))
     except ChatError as exc:
         print(f"\n错误: {exc}", file=sys.stderr)
         return 1
@@ -88,7 +97,7 @@ def cmd_chat(args) -> int:
                     reply = _stream_reply(client, messages)
                 else:
                     reply = client.chat(messages)
-                    print(reply)
+                    print(_sanitize(reply))
             except ChatError as exc:
                 print(f"\n错误: {exc}", file=sys.stderr)
                 messages.pop()
