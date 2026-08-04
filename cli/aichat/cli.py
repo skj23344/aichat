@@ -9,13 +9,28 @@ from .client import ChatClient, ChatError
 from .config import build_settings
 from .providers import PROVIDERS
 
-# 终端注入防护:剥离 ANSI/OSC 控制序列(远端模型输出可能被 prompt injection 操纵)
-_ANSI_RE = re.compile(r"\x1b(?:\[[0-9;?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[()#][0-9A-Z])")
+# 终端注入防护:剥离 ANSI/OSC/DCS/APC/PM/SOS 控制序列(远端模型输出可能被 prompt injection 操纵)
+_ANSI_RE = re.compile(
+    r"\x1b(?:\[[0-9;<=>?]*[ -/]*[@-~]"  # CSI(参数类含 <=>)
+    r"|\][^\x07\x1b]*(?:\x07|\x1b\\)"  # OSC
+    r"|[PX^_][^\x07\x1b]*(?:\x1b\\)?"  # DCS/APC/PM/SOS
+    r"|[()#][0-9A-Z])"  # 字符集选择
+)
 
 
 def _sanitize(text: str) -> str:
-    """移除 ANSI/OSC 转义序列与裸回车,防止恶意输出注入终端控制。"""
-    return _ANSI_RE.sub("", text).replace("\r", "")
+    """移除终端控制序列与裸回车,防止恶意输出注入终端。
+
+    先按规范剥离完整 CSI/OSC/DCS/APC/PM/SOS 序列,再兜底剥离
+    剩余 ESC 与 8 位 C1 控制符(\x9b=CSI、\x9d=OSC),确保任何
+    控制序列都无法到达终端。
+    """
+    text = text.replace("\x9b", "\x1b[")  # 8 位 C1 CSI → ESC 前缀形式
+    text = text.replace("\x9d", "\x1b]")  # 8 位 C1 OSC → ESC 前缀形式
+    text = _ANSI_RE.sub("", text)
+    text = text.replace("\x1b", "")  # 兜底:残留 ESC
+    text = text.replace("\r", "")
+    return text
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -63,7 +78,7 @@ def cmd_ask(args) -> int:
         else:
             print(_sanitize(client.chat(messages)))
     except ChatError as exc:
-        print(f"\n错误: {exc}", file=sys.stderr)
+        print(f"\n错误: {_sanitize(str(exc))}", file=sys.stderr)
         return 1
     return 0
 
@@ -99,7 +114,7 @@ def cmd_chat(args) -> int:
                     reply = client.chat(messages)
                     print(_sanitize(reply))
             except ChatError as exc:
-                print(f"\n错误: {exc}", file=sys.stderr)
+                print(f"\n错误: {_sanitize(str(exc))}", file=sys.stderr)
                 messages.pop()
                 continue
             messages.append({"role": "assistant", "content": reply})
@@ -134,7 +149,7 @@ def main(argv=None) -> int:
         return 0
     except KeyError as exc:
         # 未知 provider 等配置错误:友好提示而非 traceback
-        print(f"错误: {exc}", file=sys.stderr)
+        print(f"错误: {_sanitize(str(exc))}", file=sys.stderr)
         return 1
 
 

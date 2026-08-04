@@ -11,6 +11,21 @@ class SanitizeTest(unittest.TestCase):
         self.assertEqual(_sanitize("a\x1b]0;title\x07b"), "ab")
         self.assertEqual(_sanitize("a\x1b]8;;http://x\x1b\\link\x1b]8;;\x1b\\b"), "alinkb")
 
+    def test_strips_dcs_apc_pm_sos(self):
+        self.assertEqual(_sanitize("a\x1bPdcs\x1b\\b"), "ab")
+        self.assertEqual(_sanitize("a\x1b_apc\x1b\\b"), "ab")
+        self.assertEqual(_sanitize("a\x1b^pm\x1b\\b"), "ab")
+
+    def test_strips_csi_param_variants(self):
+        # 参数类含 <=> 的 CSI
+        self.assertEqual(_sanitize("\x1b[>c"), "")
+        self.assertEqual(_sanitize("\x1b[<5m"), "")
+
+    def test_strips_8bit_c1_controls(self):
+        # 8 位 C1:CSI=\x9b, OSC=\x9d(不经 ESC 前缀)
+        self.assertEqual(_sanitize("\x9b31mred"), "red")
+        self.assertEqual(_sanitize("a\x9d0;title\x07b"), "ab")
+
     def test_strips_carriage_returns(self):
         self.assertEqual(_sanitize("a\rb"), "ab")
 
