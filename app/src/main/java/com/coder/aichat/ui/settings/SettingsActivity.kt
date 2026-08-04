@@ -42,7 +42,7 @@ class SettingsActivity : AppCompatActivity() {
         val version = try {
             packageManager.getPackageInfo(packageName, 0).versionName
         } catch (_: Exception) { "1.1" }
-        binding.tvVersion.text = "AI Chat v$version · 多厂商智能助手"
+        binding.tvVersion.text = "Nexa AI v$version · 多厂商智能中枢"
 
         // 预选中厂商（从主界面跳转）
         val providerId = intent.getStringExtra(EXTRA_PROVIDER_ID)
