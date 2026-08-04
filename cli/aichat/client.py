@@ -92,20 +92,23 @@ class ChatClient:
         """流式对话,逐段产出文本增量;支持跨行 data 块,流中出错时抛 ChatError。"""
         resp = self._open(messages, stream=True)
         data_buf: List[str] = []
-        for raw in resp:
-            for line in raw.decode("utf-8", "replace").splitlines():
-                line = line.strip()
-                if not line:
-                    # 空行:SSE 事件结束,解析累积的 data 块
-                    if data_buf:
-                        yield from self._emit_sse_event("\n".join(data_buf))
-                        data_buf = []
-                    continue
-                if line.startswith("data:"):
-                    data_buf.append(line[len("data:"):].strip())
-                # 其他 SSE 字段(comment/event/id)忽略
-        if data_buf:
-            yield from self._emit_sse_event("\n".join(data_buf))
+        try:
+            for raw in resp:
+                for line in raw.decode("utf-8", "replace").splitlines():
+                    line = line.strip()
+                    if not line:
+                        # 空行:SSE 事件结束,解析累积的 data 块
+                        if data_buf:
+                            yield from self._emit_sse_event("\n".join(data_buf))
+                            data_buf = []
+                        continue
+                    if line.startswith("data:"):
+                        data_buf.append(line[len("data:"):].strip())
+                    # 其他 SSE 字段(comment/event/id)忽略
+            if data_buf:
+                yield from self._emit_sse_event("\n".join(data_buf))
+        finally:
+            resp.close()
 
     def chat(self, messages: List[dict]) -> str:
         """非流式对话,返回完整回复文本。"""
@@ -118,6 +121,9 @@ class ChatClient:
             message = data["choices"][0]["message"]
             if message is None:
                 raise ChatError(f"响应缺少 choices[0].message: {data}")
-            return message["content"]
+            content = message["content"]
+            if content is None:
+                raise ChatError("模型返回了空内容(choices[0].message.content 为 null)")
+            return content
         except (KeyError, IndexError, TypeError) as exc:
             raise ChatError(f"响应缺少 choices[0].message.content: {data}") from exc

@@ -89,6 +89,14 @@ class ChatClientTest(unittest.TestCase):
         with self.assertRaises(ChatError):
             client.chat([])
 
+    def test_chat_null_content_raises_chat_error(self):
+        payload = {"choices": [{"message": {"content": None}}]}
+        opener = mock.Mock()
+        opener.open.return_value = FakeResponse(json.dumps(payload).encode("utf-8"))
+        client = ChatClient(make_settings(stream=False), opener=opener)
+        with self.assertRaises(ChatError):
+            client.chat([])
+
     def test_request_payload_and_auth_header(self):
         opener = mock.Mock()
         opener.open.return_value = FakeResponse(b"data: [DONE]\n\n")
