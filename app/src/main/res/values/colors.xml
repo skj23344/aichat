@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 品牌色 -->
+    <color name="brand_primary">#7C6FF7</color>
+    <color name="brand_primary_dark">#5A4FDB</color>
+    <color name="brand_secondary">#A29BFE</color>
+
+    <!-- 背景 -->
+    <color name="bg_light">#F6F7FB</color>
+    <color name="bg_dark">#0F0F1A</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="surface_dark">#1A1A2E</color>
+    <color name="surface_variant_dark">#22223A</color>
+
+    <!-- 文字 -->
+    <color name="text_primary_light">#1A1A2E</color>
+    <color name="text_secondary_light">#6B7280</color>
+    <color name="text_primary_dark">#E8E8F0</color>
+    <color name="text_secondary_dark">#9CA3AF</color>
+
+    <!-- 消息气泡 -->
+    <color name="bubble_user">#7C6FF7</color>
+    <color name="bubble_user_text">#FFFFFF</color>
+    <color name="bubble_assistant_light">#FFFFFF</color>
+    <color name="bubble_assistant_dark">#22223A</color>
+
+    <!-- 供应商品牌色 -->
+    <color name="openai_color">#10A37F</color>
+    <color name="claude_color">#D97757</color>
+    <color name="gemini_color">#4285F4</color>
+    <color name="deepseek_color">#4F46E5</color>
+    <color name="groq_color">#F97316</color>
+    <color name="ollama_color">#6366F1</color>
+
+    <!-- 通用 -->
+    <color name="transparent">#00000000</color>
+    <color name="divider_light">#E5E7EB</color>
+    <color name="divider_dark">#2D2D40</color>
+    <color name="error">#EF4444</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>

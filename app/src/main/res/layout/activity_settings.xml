@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/bg_dark"
+        app:navigationIcon="@drawable/ic_back"
+        app:title="@string/title_settings"
+        app:titleTextColor="@color/text_primary_dark" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <!-- 厂商配置 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/section_provider"
+                android:textColor="@color/brand_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@color/surface_dark"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                    android:id="@+id/spinner_provider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="选择厂商"
+                    android:inputType="none"
+                    android:textColor="@color/text_primary_dark"
+                    android:textColorHint="@color/text_secondary_dark" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_api_key"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:hint="@string/api_key_label"
+                    app:boxBackgroundMode="outline"
+                    app:boxBackgroundColor="@color/surface_dark"
+                    app:hintTextColor="@color/text_secondary_dark"
+                    app:boxStrokeColor="@color/brand_primary">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_api_key"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword"
+                        android:textColor="@color/text_primary_dark" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_base_url"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:hint="@string/base_url_label"
+                    app:boxBackgroundMode="outline"
+                    app:boxBackgroundColor="@color/surface_dark"
+                    app:hintTextColor="@color/text_secondary_dark"
+                    app:boxStrokeColor="@color/brand_primary">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_base_url"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textUri"
+                        android:textColor="@color/text_primary_dark" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- 中转站专用：模型管理 -->
+                <LinearLayout
+                    android:id="@+id/layout_models"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="模型列表（每行一个，或点击下方按钮自动拉取）"
+                        android:textColor="@color/text_secondary_dark"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/et_models"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/bg_input_bar"
+                        android:gravity="top"
+                        android:hint="model-a\nmodel-b\n…"
+                        android:importantForAutofill="no"
+                        android:inputType="textMultiLine"
+                        android:minLines="3"
+                        android:padding="12dp"
+                        android:textColor="@color/text_primary_dark"
+                        android:textColorHint="@color/text_secondary_dark"
+                        android:textSize="13sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_fetch_models"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="从接口拉取模型"
+                        android:textColor="@color/brand_secondary" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_save_provider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/save"
+                    app:cornerRadius="12dp" />
+            </LinearLayout>
+
+            <!-- 通用 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:text="@string/section_general"
+                android:textColor="@color/brand_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@color/surface_dark"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/system_prompt_label"
+                    app:boxBackgroundMode="outline"
+                    app:boxBackgroundColor="@color/surface_dark"
+                    app:helperText="支持变量：{date} {time} {model} {provider}"
+                    app:hintTextColor="@color/text_secondary_dark"
+                    app:boxStrokeColor="@color/brand_primary">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_system_prompt"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textMultiLine"
+                        android:minLines="3"
+                        android:textColor="@color/text_primary_dark" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_save_general"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/save"
+                    app:cornerRadius="12dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_clear_all"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/clear_conversation"
+                    android:textColor="@color/error" />
+            </LinearLayout>
+
+            <!-- 联网搜索 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:text="联网搜索"
+                android:textColor="@color/brand_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@color/surface_dark"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                    android:id="@+id/spinner_search_engine"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="搜索服务商"
+                    android:inputType="none"
+                    android:textColor="@color/text_primary_dark"
+                    android:textColorHint="@color/text_secondary_dark" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="搜索 API Key"
+                    app:boxBackgroundMode="outline"
+                    app:boxBackgroundColor="@color/surface_dark"
+                    app:boxStrokeColor="@color/brand_primary"
+                    app:hintTextColor="@color/text_secondary_dark"
+                    app:helperText="Bing 免费免 Key；Tavily/Exa 需官网申请">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_search_key"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword"
+                        android:textColor="@color/text_primary_dark" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_search"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="默认启用联网搜索"
+                    android:textColor="@color/text_primary_dark" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_save_search"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="保存搜索配置"
+                    app:cornerRadius="12dp" />
+            </LinearLayout>
+
+            <!-- 软件更新 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:text="软件更新"
+                android:textColor="@color/brand_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@color/surface_dark"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="更新检查地址"
+                    app:boxBackgroundMode="outline"
+                    app:boxBackgroundColor="@color/surface_dark"
+                    app:boxStrokeColor="@color/brand_primary"
+                    app:helperText="GitHub Releases API 或 {version,apkUrl,note} JSON"
+                    app:hintTextColor="@color/text_secondary_dark">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_update_url"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textUri"
+                        android:textColor="@color/text_primary_dark" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_update_auto"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="启动时后台检查更新"
+                    android:textColor="@color/text_primary_dark" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_check_update"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="立即检查更新"
+                    app:cornerRadius="12dp" />
+            </LinearLayout>
+
+            <!-- 关于 -->
+            <TextView
+                android:id="@+id/tv_version"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="16dp"
+                android:gravity="center"
+                android:textColor="@color/text_secondary_dark"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
