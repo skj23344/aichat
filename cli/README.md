@@ -67,8 +67,8 @@ model = deepseek-chat
 ## 测试
 
 ```bash
-cd cli
-python -m unittest discover -s tests -v
+# 在仓库根目录运行
+python -m unittest discover -s cli/tests -t cli -v
 ```
 
 ## 目录结构
