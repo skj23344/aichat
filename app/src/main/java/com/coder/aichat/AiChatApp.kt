@@ -4,6 +4,7 @@ import android.app.Application
 import com.coder.aichat.data.api.providers.CustomOpenAiProvider
 import com.coder.aichat.data.api.providers.ProviderRegistry
 import com.coder.aichat.data.local.AppDatabase
+import com.coder.aichat.data.local.MemoryStore
 import com.coder.aichat.data.local.RolePlayStore
 import com.coder.aichat.data.local.SettingsDataStore
 import com.coder.aichat.data.repository.ChatRepository
@@ -19,6 +20,7 @@ class AiChatApp : Application() {
     lateinit var repository: ChatRepository
     lateinit var settings: SettingsDataStore
     lateinit var rolePlayStore: RolePlayStore
+    lateinit var memoryStore: MemoryStore
     lateinit var searchManager: SearchManager
     lateinit var updateChecker: UpdateChecker
 
@@ -36,6 +38,7 @@ class AiChatApp : Application() {
         repository = ChatRepository(database.conversationDao())
         settings = SettingsDataStore(this)
         rolePlayStore = RolePlayStore(this)
+        memoryStore = MemoryStore(this)
         searchManager = SearchManager()
         updateChecker = UpdateChecker()
 
@@ -51,6 +54,12 @@ class AiChatApp : Application() {
 
                 val baseUrl = settings.getBaseUrl(provider.id)
                 if (baseUrl.isNotBlank()) provider.setBaseUrl(baseUrl)
+
+                // 恢复自定义 HTTP 请求头
+                if (provider is com.coder.aichat.data.api.providers.BaseOpenAiCompatProvider) {
+                    val headers = settings.getCustomHeaders(provider.id)
+                    if (headers.isNotEmpty()) provider.setExtraHeaders(headers)
+                }
 
                 // 中转站恢复自定义模型列表
                 if (provider is CustomOpenAiProvider) {

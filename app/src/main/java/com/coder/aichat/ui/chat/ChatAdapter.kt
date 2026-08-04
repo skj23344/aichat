@@ -26,7 +26,9 @@ class ChatAdapter(
     private val provider: AiProvider,
     private val onCopy: (String) -> Unit,
     private val onRegenerate: () -> Unit,
-    private val onTranslate: (String) -> Unit
+    private val onTranslate: (String) -> Unit,
+    private val onSpeak: (String) -> Unit,
+    private val onShare: (String) -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
@@ -171,7 +173,7 @@ class ChatAdapter(
         }
 
         private fun showActionsMenu(content: String) {
-            val options = arrayOf("复制", "重新生成", "翻译成中文")
+            val options = arrayOf("复制", "重新生成", "翻译成中文", "语音朗读", "分享")
             AlertDialog.Builder(binding.root.context)
                 .setTitle("消息操作")
                 .setItems(options) { _, which ->
@@ -179,6 +181,8 @@ class ChatAdapter(
                         0 -> onCopy(content)
                         1 -> onRegenerate()
                         2 -> onTranslate(content)
+                        3 -> onSpeak(content)
+                        4 -> onShare(content)
                     }
                 }
                 .show()

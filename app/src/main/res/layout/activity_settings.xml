@@ -91,6 +91,28 @@
                         android:textColor="@color/text_primary_dark" />
                 </com.google.android.material.textfield.TextInputLayout>
 
+                <!-- 自定义请求头 -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_headers"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:hint="自定义请求头（每行 key: value）"
+                    app:boxBackgroundMode="outline"
+                    app:boxBackgroundColor="@color/surface_dark"
+                    app:boxStrokeColor="@color/brand_primary"
+                    app:hintTextColor="@color/text_secondary_dark">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_headers"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textMultiLine"
+                        android:minLines="2"
+                        android:textColor="@color/text_primary_dark"
+                        android:textSize="13sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
                 <!-- 中转站专用：模型管理 -->
                 <LinearLayout
                     android:id="@+id/layout_models"
@@ -257,6 +279,66 @@
                     android:layout_marginTop="12dp"
                     android:text="保存搜索配置"
                     app:cornerRadius="12dp" />
+            </LinearLayout>
+
+            <!-- 智能记忆 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:text="智能记忆"
+                android:textColor="@color/brand_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@color/surface_dark"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="添加一条记忆，如：我喜欢简洁的回答"
+                    app:boxBackgroundMode="outline"
+                    app:boxBackgroundColor="@color/surface_dark"
+                    app:boxStrokeColor="@color/brand_primary"
+                    app:hintTextColor="@color/text_secondary_dark">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_memory_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textMultiLine"
+                        android:maxLines="2"
+                        android:textColor="@color/text_primary_dark" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_add_memory"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="添加记忆"
+                    app:cornerRadius="12dp" />
+
+                <LinearLayout
+                    android:id="@+id/ll_memory_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="AI 对话时会参考这些记忆，让回答更贴合你"
+                    android:textColor="@color/text_secondary_dark"
+                    android:textSize="12sp" />
             </LinearLayout>
 
             <!-- 软件更新 -->

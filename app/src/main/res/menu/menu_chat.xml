@@ -2,6 +2,11 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_export"
+        android:icon="@drawable/ic_share"
+        android:title="导出会话"
+        app:showAsAction="always" />
+    <item
         android:id="@+id/action_roleplay"
         android:icon="@drawable/ic_roleplay"
         android:title="角色扮演"

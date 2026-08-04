@@ -9,17 +9,17 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ConversationDao {
     // ── 会话 ──
-    @Query("SELECT * FROM conversations ORDER BY updated_at DESC")
+    @Query("SELECT * FROM conversations ORDER BY pinned DESC, updated_at DESC")
     fun getAllConversations(): Flow<List<ConversationEntity>>
 
-    /** 会话列表（含最后一条消息预览），按更新时间倒序 */
+    /** 会话列表（含最后一条消息预览），置顶优先，再按更新时间倒序 */
     @Query("""
-        SELECT c.id, c.title, c.providerId, c.modelId,
+        SELECT c.id, c.title, c.providerId, c.modelId, c.pinned,
             c.created_at AS createdAt, c.updated_at AS updatedAt,
             (SELECT m.content FROM messages m WHERE m.conversation_id = c.id
              ORDER BY m.timestamp DESC LIMIT 1) AS lastMessage
         FROM conversations c
-        ORDER BY c.updated_at DESC
+        ORDER BY c.pinned DESC, c.updated_at DESC
     """)
     fun getAllConversationsWithPreview(): Flow<List<ConversationRow>>
 

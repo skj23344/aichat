@@ -6,10 +6,12 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
+import java.util.Locale
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.isVisible
@@ -44,6 +46,7 @@ class ChatActivity : AppCompatActivity() {
                 return ChatViewModel(
                     repository = app.repository,
                     settings = app.settings,
+                    memoryStore = app.memoryStore,
                     searchManager = app.searchManager,
                     providerId = provider.id,
                     modelId = modelId
@@ -53,6 +56,10 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private lateinit var adapter: ChatAdapter
+
+    // TTS 语音朗读
+    private var tts: TextToSpeech? = null
+    private var isSpeaking = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,9 +81,18 @@ class ChatActivity : AppCompatActivity() {
         setupQuickMessages()
         setupInput()
         observeViewModel()
+        initTts()
 
         if (conversationId != null) {
             viewModel.loadMessages(conversationId!!)
+        }
+    }
+
+    private fun initTts() {
+        tts = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                tts?.language = Locale.CHINESE
+            }
         }
     }
 
@@ -96,10 +112,17 @@ class ChatActivity : AppCompatActivity() {
         // 角色扮演入口
         binding.toolbar.inflateMenu(R.menu.menu_chat)
         binding.toolbar.setOnMenuItemClickListener { item ->
-            if (item.itemId == R.id.action_roleplay) {
-                showRolePlayDialog()
-                true
-            } else false
+            when (item.itemId) {
+                R.id.action_roleplay -> {
+                    showRolePlayDialog()
+                    true
+                }
+                R.id.action_export -> {
+                    exportConversation()
+                    true
+                }
+                else -> false
+            }
         }
     }
 
@@ -138,7 +161,14 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        adapter = ChatAdapter(provider, ::copyToClipboard, ::regenerateLast, ::translateMessage)
+        adapter = ChatAdapter(
+            provider,
+            ::copyToClipboard,
+            ::regenerateLast,
+            ::translateMessage,
+            ::speakMessage,
+            ::shareMessage
+        )
         binding.recyclerMessages.layoutManager = LinearLayoutManager(this)
         binding.recyclerMessages.adapter = adapter
         binding.recyclerMessages.itemAnimator = null // 手动控制动画更精确
@@ -146,31 +176,58 @@ class ChatActivity : AppCompatActivity() {
 
     /** 快捷消息 chips — 点击填入输入框 */
     private fun setupQuickMessages() {
+        addQuickChip("📋 模板") { showTemplateDialog() }
+
         val quick = listOf("帮我写代码", "解释这段内容", "翻译成英文", "总结一下", "续写", "帮我起个标题")
-        binding.llQuickChips.removeAllViews()
         quick.forEach { msg ->
-            val chip = TextView(this).apply {
-                text = msg
-                textSize = 13f
-                setPadding(44, 22, 44, 22)
-                background = GradientDrawable().apply {
-                    cornerRadius = 44f
-                    setColor(0xFF2A2A45.toInt())
-                    setStroke(1, 0xFF3D3D55.toInt())
-                }
-                setTextColor(0xFFE8E8F0.toInt())
-                setOnClickListener {
-                    binding.etInput.setText(msg)
-                    binding.etInput.setSelection(msg.length)
-                    binding.etInput.requestFocus()
-                }
+            addQuickChip(msg) {
+                binding.etInput.setText(msg)
+                binding.etInput.setSelection(msg.length)
+                binding.etInput.requestFocus()
             }
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { marginEnd = 24 }
-            binding.llQuickChips.addView(chip, lp)
         }
+    }
+
+    private fun addQuickChip(text: String, onClick: () -> Unit) {
+        val chip = TextView(this).apply {
+            this.text = text
+            textSize = 13f
+            setPadding(44, 22, 44, 22)
+            background = GradientDrawable().apply {
+                cornerRadius = 44f
+                setColor(0xFF2A2A45.toInt())
+                setStroke(1, 0xFF3D3D55.toInt())
+            }
+            setTextColor(0xFFE8E8F0.toInt())
+            setOnClickListener { onClick() }
+        }
+        val lp = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { marginEnd = 24 }
+        binding.llQuickChips.addView(chip, lp)
+    }
+
+    /** 模板选择对话框 */
+    private fun showTemplateDialog() {
+        val templates = com.coder.aichat.data.PromptTemplates.all
+        val names = templates.map { it.name }.toTypedArray()
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("选择 Prompt 模板")
+            .setItems(names) { _, which ->
+                applyTemplate(templates[which])
+            }
+            .show()
+    }
+
+    private fun applyTemplate(t: com.coder.aichat.data.PromptTemplates.Template) {
+        val et = binding.etInput
+        val selection = et.text?.substring(et.selectionStart, et.selectionEnd).orEmpty()
+        val content = if (selection.isNotEmpty()) selection else et.text?.toString().orEmpty()
+        val prompt = t.prompt.replace("{content}", content)
+        et.setText(prompt)
+        et.setSelection(prompt.length)
+        et.requestFocus()
     }
 
     /** 重新生成最后一条回复 */
@@ -262,6 +319,58 @@ class ChatActivity : AppCompatActivity() {
         Toast.makeText(this, "已复制", Toast.LENGTH_SHORT).show()
     }
 
+    /** TTS 朗读 / 停止 */
+    private fun speakMessage(text: String) {
+        if (isSpeaking) {
+            tts?.stop()
+            isSpeaking = false
+            Toast.makeText(this, "已停止朗读", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val clean = text.replace(Regex("[`#*_\\[\\]|>~-]+"), " ")
+            .replace(Regex("\\s+"), " ").trim()
+        if (clean.isBlank()) return
+        tts?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "tts")
+        isSpeaking = true
+        tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+            override fun onStart(p0: String?) {}
+            override fun onDone(p0: String?) { isSpeaking = false }
+            override fun onError(p0: String?) { isSpeaking = false }
+        })
+        Toast.makeText(this, "正在朗读…", Toast.LENGTH_SHORT).show()
+    }
+
+    /** 分享单条消息 */
+    private fun shareMessage(text: String) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+        startActivity(Intent.createChooser(intent, "分享消息"))
+    }
+
+    /** 导出整个会话为文本 */
+    private fun exportConversation() {
+        val messages = viewModel.messages.value ?: return
+        if (messages.isEmpty()) {
+            Toast.makeText(this, "还没有消息可导出", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val sb = StringBuilder()
+        sb.append("# ${provider.displayName} 对话\n")
+        sb.append("模型：$modelId · ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(java.util.Date())}\n\n")
+        messages.forEach { msg ->
+            val role = if (msg.role == com.coder.aichat.data.api.dto.MessageRole.USER) "🙋 我" else "🤖 AI"
+            sb.append("**$role**\n${msg.content}\n\n")
+        }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "${provider.displayName} 对话导出")
+            putExtra(Intent.EXTRA_TEXT, sb.toString())
+        }
+        startActivity(Intent.createChooser(intent, "导出会话"))
+    }
+
     override fun onResume() {
         super.onResume()
         // 刷新模型信息（设置页可能改了 base url 等）
@@ -276,6 +385,9 @@ class ChatActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         viewModel.stopStreaming()
+        tts?.stop()
+        tts?.shutdown()
+        tts = null
         super.onDestroy()
     }
 }

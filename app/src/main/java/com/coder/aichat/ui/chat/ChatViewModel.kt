@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.coder.aichat.data.api.dto.ChatMessage
 import com.coder.aichat.data.api.dto.MessageRole
+import com.coder.aichat.data.local.MemoryStore
 import com.coder.aichat.data.local.SettingsDataStore
 import com.coder.aichat.data.repository.ChatRepository
 import com.coder.aichat.data.search.SearchEngine
@@ -22,6 +23,7 @@ import java.util.Locale
 class ChatViewModel(
     private val repository: ChatRepository,
     private val settings: SettingsDataStore,
+    private val memoryStore: MemoryStore,
     private val searchManager: SearchManager,
     val providerId: String,
     var modelId: String
@@ -57,11 +59,13 @@ class ChatViewModel(
     private var current = mutableListOf<ChatMessage>()
     private var streamJob: Job? = null
     private var loadingDone = false
+    private var memories: List<String> = emptyList()
 
     init {
         viewModelScope.launch {
             _systemPrompt.value = settings.getSystemPrompt()
             searchEnabled = settings.getSearchEnabled()
+            memories = memoryStore.getMemoryTexts()
         }
     }
 
@@ -164,9 +168,13 @@ class ChatViewModel(
         _isStreaming.value = true
         // 角色扮演人设优先，否则用全局系统提示词；并替换 Prompt 变量
         val basePrompt = resolvePromptVars(activeRolePrompt ?: settings.getSystemPrompt())
+        // 智能记忆：附加用户已知信息
+        val memoryPrompt = if (memories.isNotEmpty())
+            "\n\n【关于用户的信息（供回答参考）：】\n" + memories.joinToString("\n• ", "• ") else ""
+        val withMemory = basePrompt + memoryPrompt
         // 联网搜索结果附加为额外上下文
-        val systemPrompt = if (extraContext.isNullOrBlank()) basePrompt
-            else "$basePrompt\n\n$extraContext"
+        val systemPrompt = if (extraContext.isNullOrBlank()) withMemory
+            else "$withMemory\n\n$extraContext"
 
         streamJob = viewModelScope.launch {
             val sb = StringBuilder()

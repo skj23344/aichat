@@ -33,12 +33,23 @@ abstract class BaseOpenAiCompatProvider : AiProvider {
 
     private var apiKey: String = ""
     private var baseUrl: String = defaultBaseUrl()
+    private var extraHeaders: Map<String, String> = emptyMap()
 
     override fun setApiKey(key: String) { apiKey = key }
     override fun getApiKey(): String = apiKey
 
     override fun setBaseUrl(url: String) { baseUrl = url }
     override fun getBaseUrl(): String = baseUrl
+
+    /** 设置自定义 HTTP 请求头（中转站等需要） */
+    fun setExtraHeaders(headers: Map<String, String>) {
+        extraHeaders = headers.filter { it.key.isNotBlank() && it.value.isNotBlank() }
+    }
+
+    protected fun Request.Builder.withExtraHeaders(): Request.Builder {
+        extraHeaders.forEach { (k, v) -> addHeader(k, v) }
+        return this
+    }
 
     override fun chatStream(
         messages: List<ChatMessage>,
@@ -63,6 +74,7 @@ abstract class BaseOpenAiCompatProvider : AiProvider {
             .url(url)
             .addHeader("Authorization", "Bearer ${getApiKey()}")
             .addHeader("Content-Type", "application/json")
+            .withExtraHeaders()
             .post(jsonBody.toRequestBody("application/json".toMediaType()))
             .build()
 
@@ -117,6 +129,7 @@ abstract class BaseOpenAiCompatProvider : AiProvider {
             .url(url)
             .addHeader("Authorization", "Bearer ${getApiKey()}")
             .addHeader("Content-Type", "application/json")
+            .withExtraHeaders()
             .post(jsonBody.toRequestBody("application/json".toMediaType()))
             .build()
 

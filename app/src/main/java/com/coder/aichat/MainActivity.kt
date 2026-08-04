@@ -2,6 +2,8 @@ package com.coder.aichat
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AlertDialog
@@ -21,12 +23,13 @@ import kotlinx.coroutines.launch
 
 /**
  * 主界面 — RikkaHub 式会话列表。
- * 打开即见历史会话，右下角 FAB 新建。
+ * 打开即见历史会话，右下角 FAB 新建，顶部可搜索。
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var historyAdapter: HistoryAdapter
+    private var fullList: List<ConversationRow> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,9 +38,31 @@ class MainActivity : AppCompatActivity() {
 
         setupToolbar()
         setupHistoryList()
+        setupSearch()
 
         binding.fabNew.setOnClickListener { showProviderPicker() }
         checkForUpdateInBackground()
+    }
+
+    private fun setupSearch() {
+        binding.etSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                val query = s?.toString()?.trim().orEmpty()
+                if (query.isEmpty()) {
+                    historyAdapter.submitList(fullList)
+                    binding.emptyView.isVisible = fullList.isEmpty()
+                } else {
+                    val filtered = fullList.filter {
+                        it.title.contains(query, ignoreCase = true) ||
+                                it.lastMessage?.contains(query, ignoreCase = true) == true
+                    }
+                    historyAdapter.submitList(filtered)
+                    binding.emptyView.isVisible = filtered.isEmpty()
+                }
+            }
+        })
     }
 
     /** 后台自动检查更新（配置了地址才检查） */
@@ -73,13 +98,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupHistoryList() {
-        historyAdapter = HistoryAdapter(::openConversation, ::confirmDelete)
+        historyAdapter = HistoryAdapter(::openConversation, ::showSessionActions)
         binding.recyclerHistory.layoutManager = LinearLayoutManager(this)
         binding.recyclerHistory.adapter = historyAdapter
 
         lifecycleScope.launch {
             (application as AiChatApp).repository.getAllConversationsWithPreview().collect { list ->
-                historyAdapter.submitList(list)
+                fullList = list
+                // 若当前有搜索词则保持过滤
+                val query = binding.etSearch.text?.toString()?.trim().orEmpty()
+                if (query.isEmpty()) {
+                    historyAdapter.submitList(list)
+                } else {
+                    historyAdapter.submitList(list.filter {
+                        it.title.contains(query, ignoreCase = true) ||
+                                it.lastMessage?.contains(query, ignoreCase = true) == true
+                    })
+                }
                 binding.emptyView.isVisible = list.isEmpty()
             }
         }
@@ -92,6 +127,52 @@ class MainActivity : AppCompatActivity() {
             putExtra(ChatActivity.EXTRA_CONVERSATION_ID, conv.id)
         }
         startActivity(intent)
+    }
+
+    /** 长按会话：置顶 / 重命名 / 删除 */
+    private fun showSessionActions(conv: ConversationRow) {
+        val pinLabel = if (conv.pinned) "📌 取消置顶" else "📌 置顶"
+        val options = arrayOf(pinLabel, "✏️ 重命名", "🗑 删除")
+        AlertDialog.Builder(this)
+            .setTitle(conv.title)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> lifecycleScope.launch {
+                        val pinned = (application as AiChatApp).repository.togglePin(conv.id)
+                        Toast.makeText(
+                            this@MainActivity,
+                            if (pinned) "已置顶" else "已取消置顶",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    1 -> showRenameDialog(conv)
+                    2 -> confirmDelete(conv)
+                }
+            }
+            .show()
+    }
+
+    private fun showRenameDialog(conv: ConversationRow) {
+        val editText = android.widget.EditText(this).apply {
+            setText(conv.title)
+            setSingleLine()
+            setPadding(48, 32, 48, 32)
+            setTextColor(0xFFE8E8F0.toInt())
+        }
+        AlertDialog.Builder(this)
+            .setTitle("重命名会话")
+            .setView(editText)
+            .setPositiveButton("确定") { _, _ ->
+                val newTitle = editText.text?.toString()?.trim().orEmpty()
+                if (newTitle.isNotEmpty()) {
+                    lifecycleScope.launch {
+                        (application as AiChatApp).repository.renameConversation(conv.id, newTitle)
+                        Toast.makeText(this@MainActivity, "已重命名", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
     }
 
     private fun confirmDelete(conv: ConversationRow) {

@@ -43,7 +43,7 @@ class HistoryAdapter(
                 shape = GradientDrawable.OVAL
                 setColor(provider?.brandColor ?: 0xFF7C6FF7.toInt())
             }
-            binding.tvTitle.text = row.title
+            binding.tvTitle.text = (if (row.pinned) "📌 " else "") + row.title
             binding.tvTime.text = formatRelativeTime(row.updatedAt)
 
             // 最后一条消息预览

@@ -1,6 +1,7 @@
 package com.coder.aichat.ui.settings
 
 import android.os.Bundle
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
@@ -37,6 +38,7 @@ class SettingsActivity : AppCompatActivity() {
         setupSaveActions()
         setupSearchSection()
         setupUpdateSection()
+        setupMemorySection()
 
         // 显示版本号
         val version = try {
@@ -80,6 +82,12 @@ class SettingsActivity : AppCompatActivity() {
             if (!provider.requiresApiKey) {
                 binding.etApiKey.setText("无需 API Key")
             }
+
+            // 自定义请求头（OpenAI 兼容厂商）
+            val headers = settings.getCustomHeaders(provider.id)
+            binding.etHeaders.setText(
+                headers.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+            )
 
             // 中转站：显示模型管理区并载入已存模型
             val isCustom = provider is CustomOpenAiProvider
@@ -181,6 +189,70 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    /** 智能记忆管理 */
+    private fun setupMemorySection() {
+        renderMemory()
+        binding.btnAddMemory.setOnClickListener {
+            val text = binding.etMemoryInput.text?.toString().orEmpty().trim()
+            if (text.isEmpty()) {
+                Toast.makeText(this, "请输入记忆内容", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            lifecycleScope.launch {
+                (application as AiChatApp).memoryStore.addMemory(text)
+                binding.etMemoryInput.setText("")
+                renderMemory()
+                Toast.makeText(this@SettingsActivity, "记忆已添加", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun renderMemory() {
+        binding.llMemoryList.removeAllViews()
+        lifecycleScope.launch {
+            val items = (application as AiChatApp).memoryStore.getMemories()
+            if (items.isEmpty()) {
+                val empty = TextView(this@SettingsActivity).apply {
+                    text = "暂无记忆"
+                    setTextColor(0xFF6B7280.toInt())
+                    textSize = 13f
+                    setPadding(0, 8, 0, 8)
+                }
+                binding.llMemoryList.addView(empty)
+                return@launch
+            }
+            items.forEach { m ->
+                val row = android.widget.LinearLayout(this@SettingsActivity).apply {
+                    orientation = android.widget.LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    setPadding(0, 8, 0, 8)
+                }
+                val tv = TextView(this@SettingsActivity).apply {
+                    text = "• ${m.text}"
+                    setTextColor(0xFFE8E8F0.toInt())
+                    textSize = 14f
+                    layoutParams = android.widget.LinearLayout.LayoutParams(0,
+                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                }
+                val del = TextView(this@SettingsActivity).apply {
+                    text = "✕"
+                    setTextColor(0xFFEF4444.toInt())
+                    textSize = 16f
+                    setPadding(24, 8, 8, 8)
+                    setOnClickListener {
+                        lifecycleScope.launch {
+                            (application as AiChatApp).memoryStore.removeMemory(m.id)
+                            renderMemory()
+                        }
+                    }
+                }
+                row.addView(tv)
+                row.addView(del)
+                binding.llMemoryList.addView(row)
+            }
+        }
+    }
+
     private fun setupSaveActions() {
         binding.btnSaveProvider.setOnClickListener {
             val provider = currentProvider ?: return@setOnClickListener
@@ -198,6 +270,22 @@ class SettingsActivity : AppCompatActivity() {
                     settings.setBaseUrl(provider.id, baseUrl)
                 }
                 provider.setBaseUrl(baseUrl)
+
+                // 自定义请求头
+                if (provider is com.coder.aichat.data.api.providers.BaseOpenAiCompatProvider) {
+                    val headers = binding.etHeaders.text?.toString()
+                        ?.lineSequence()
+                        ?.mapNotNull { line ->
+                            val idx = line.indexOf(":")
+                            if (idx > 0) {
+                                val k = line.substring(0, idx).trim()
+                                val v = line.substring(idx + 1).trim()
+                                if (k.isNotEmpty() && v.isNotEmpty()) k to v else null
+                            } else null
+                        }?.toMap().orEmpty()
+                    settings.setCustomHeaders(provider.id, headers)
+                    provider.setExtraHeaders(headers)
+                }
 
                 // 中转站：保存模型列表
                 if (provider is CustomOpenAiProvider) {

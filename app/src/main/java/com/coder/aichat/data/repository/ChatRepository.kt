@@ -41,6 +41,19 @@ class ChatRepository(private val dao: ConversationDao) {
         dao.getConversation(conversationId)?.let { dao.deleteConversation(it) }
     }
 
+    suspend fun renameConversation(conversationId: String, title: String) {
+        dao.getConversation(conversationId)?.let {
+            dao.upsertConversation(it.copy(title = title, updatedAt = System.currentTimeMillis()))
+        }
+    }
+
+    suspend fun togglePin(conversationId: String): Boolean {
+        val conv = dao.getConversation(conversationId) ?: return false
+        val newPinned = !conv.pinned
+        dao.upsertConversation(conv.copy(pinned = newPinned, updatedAt = System.currentTimeMillis()))
+        return newPinned
+    }
+
     fun chatStream(
         providerId: String,
         modelId: String,

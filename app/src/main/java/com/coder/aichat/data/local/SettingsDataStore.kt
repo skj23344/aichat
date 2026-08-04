@@ -26,6 +26,7 @@ class SettingsDataStore(private val context: Context) {
 
         fun providerApiKeyKey(providerId: String) = stringPreferencesKey("api_key_$providerId")
         fun providerBaseUrlKey(providerId: String) = stringPreferencesKey("base_url_$providerId")
+        fun providerHeadersKey(providerId: String) = stringPreferencesKey("headers_$providerId")
     }
 
     val selectedProvider: Flow<String> =
@@ -73,6 +74,22 @@ class SettingsDataStore(private val context: Context) {
 
     suspend fun getBaseUrl(providerId: String): String =
         context.dataStore.data.map { it[providerBaseUrlKey(providerId)] ?: "" }.first()
+
+    /** 自定义 HTTP 请求头（每行 "key: value"） */
+    suspend fun setCustomHeaders(providerId: String, headers: Map<String, String>) {
+        val text = headers.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+        context.dataStore.edit { it[providerHeadersKey(providerId)] = text }
+    }
+
+    suspend fun getCustomHeaders(providerId: String): Map<String, String> =
+        context.dataStore.data.map { prefs ->
+            prefs[providerHeadersKey(providerId)]?.lineSequence()
+                ?.mapNotNull { line ->
+                    val idx = line.indexOf(":")
+                    if (idx > 0) line.substring(0, idx).trim() to line.substring(idx + 1).trim()
+                    else null
+                }?.toMap() ?: emptyMap()
+        }.first()
 
     /** 中转站自定义模型列表（逗号分隔） */
     suspend fun setCustomModels(models: List<String>) {

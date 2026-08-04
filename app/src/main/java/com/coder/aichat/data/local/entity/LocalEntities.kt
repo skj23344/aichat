@@ -8,6 +8,7 @@ data class ConversationEntity(
     val title: String,
     val providerId: String,
     val modelId: String,
+    val pinned: Boolean = false,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis()
 )
@@ -36,6 +37,7 @@ data class ConversationRow(
     val title: String,
     val providerId: String,
     val modelId: String,
+    val pinned: Boolean,
     val createdAt: Long,
     val updatedAt: Long,
     val lastMessage: String?
