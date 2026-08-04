@@ -80,7 +80,7 @@ class ChatClient:
             return
         try:
             chunk = json.loads(data)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, RecursionError):
             return
         if not isinstance(chunk, dict):
             return
@@ -136,7 +136,7 @@ class ChatClient:
                 if len(body) > MAX_RESPONSE_BYTES:
                     raise ChatError(f"响应超过 {MAX_RESPONSE_BYTES // (1024 * 1024)} MiB 上限")
                 data = json.loads(body.decode("utf-8", "replace"))
-            except json.JSONDecodeError as exc:
+            except (json.JSONDecodeError, RecursionError) as exc:
                 raise ChatError("响应不是合法 JSON") from exc
             try:
                 message = data["choices"][0]["message"]
