@@ -95,7 +95,7 @@ class ChatClient:
         if not isinstance(delta, dict):
             return
         content = delta.get("content")
-        if content:
+        if isinstance(content, str) and content:
             yield content
 
     def stream_chat(self, messages: List[dict]) -> Iterator[str]:
