@@ -7,6 +7,9 @@ from typing import Iterator, List, Optional
 
 from .config import Settings
 
+# 非流式响应体大小上限(防恶意服务器 OOM)
+MAX_RESPONSE_BYTES = 10 * 1024 * 1024
+
 
 class ChatError(RuntimeError):
     """LLM 请求失败(HTTP 错误 / 网络错误 / 响应格式错误)。"""
@@ -125,7 +128,10 @@ class ChatClient:
         resp = self._open(messages, stream=False)
         try:
             try:
-                data = json.loads(resp.read().decode("utf-8", "replace"))
+                body = resp.read(MAX_RESPONSE_BYTES + 1)
+                if len(body) > MAX_RESPONSE_BYTES:
+                    raise ChatError(f"响应超过 {MAX_RESPONSE_BYTES // (1024 * 1024)} MiB 上限")
+                data = json.loads(body.decode("utf-8", "replace"))
             except json.JSONDecodeError as exc:
                 raise ChatError("响应不是合法 JSON") from exc
             try:
@@ -133,8 +139,8 @@ class ChatClient:
                 if message is None:
                     raise ChatError(f"响应缺少 choices[0].message: {data}")
                 content = message["content"]
-                if content is None:
-                    raise ChatError("模型返回了空内容(choices[0].message.content 为 null)")
+                if not isinstance(content, str):
+                    raise ChatError("模型返回了非文本内容(choices[0].message.content 非字符串)")
                 return content
             except (KeyError, IndexError, TypeError) as exc:
                 raise ChatError(f"响应缺少 choices[0].message.content: {data}") from exc

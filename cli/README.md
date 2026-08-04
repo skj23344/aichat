@@ -57,6 +57,8 @@ python -m aichat providers
 
 ### 配置文件 `~/.aichatrc.ini`
 
+> 提示:文件内含 API Key,建议设置仅本人可读权限(Unix 下 `chmod 600 ~/.aichatrc.ini`)。
+
 ```ini
 [aichat]
 provider = deepseek
