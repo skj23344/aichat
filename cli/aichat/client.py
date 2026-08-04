@@ -76,6 +76,8 @@ class ChatClient:
             chunk = json.loads(data)
         except json.JSONDecodeError:
             return
+        if not isinstance(chunk, dict):
+            return
         error = chunk.get("error")
         if error:
             message = error.get("message", str(error)) if isinstance(error, dict) else str(error)
@@ -114,16 +116,19 @@ class ChatClient:
         """非流式对话,返回完整回复文本。"""
         resp = self._open(messages, stream=False)
         try:
-            data = json.loads(resp.read().decode("utf-8"))
-        except json.JSONDecodeError as exc:
-            raise ChatError("响应不是合法 JSON") from exc
-        try:
-            message = data["choices"][0]["message"]
-            if message is None:
-                raise ChatError(f"响应缺少 choices[0].message: {data}")
-            content = message["content"]
-            if content is None:
-                raise ChatError("模型返回了空内容(choices[0].message.content 为 null)")
-            return content
-        except (KeyError, IndexError, TypeError) as exc:
-            raise ChatError(f"响应缺少 choices[0].message.content: {data}") from exc
+            try:
+                data = json.loads(resp.read().decode("utf-8"))
+            except json.JSONDecodeError as exc:
+                raise ChatError("响应不是合法 JSON") from exc
+            try:
+                message = data["choices"][0]["message"]
+                if message is None:
+                    raise ChatError(f"响应缺少 choices[0].message: {data}")
+                content = message["content"]
+                if content is None:
+                    raise ChatError("模型返回了空内容(choices[0].message.content 为 null)")
+                return content
+            except (KeyError, IndexError, TypeError) as exc:
+                raise ChatError(f"响应缺少 choices[0].message.content: {data}") from exc
+        finally:
+            resp.close()

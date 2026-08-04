@@ -54,7 +54,7 @@ def cmd_ask(args) -> int:
         else:
             print(client.chat(messages))
     except ChatError as exc:
-        print(f"错误: {exc}", file=sys.stderr)
+        print(f"\n错误: {exc}", file=sys.stderr)
         return 1
     return 0
 
