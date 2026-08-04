@@ -56,6 +56,11 @@ class ConfigTest(unittest.TestCase):
         s = build_settings(stream=False, config_path=MISSING)
         self.assertFalse(s.stream)
 
+    def test_unknown_provider_raises_friendly_key_error(self):
+        with self.assertRaises(KeyError) as ctx:
+            build_settings(provider_name="no-such-provider", config_path=MISSING)
+        self.assertIn("no-such-provider", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

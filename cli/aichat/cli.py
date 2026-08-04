@@ -114,14 +114,19 @@ def cmd_providers(args) -> int:
 def main(argv=None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    if args.command == "ask":
-        return cmd_ask(args)
-    if args.command == "chat":
-        return cmd_chat(args)
-    if args.command == "providers":
-        return cmd_providers(args)
-    parser.print_help()
-    return 0
+    try:
+        if args.command == "ask":
+            return cmd_ask(args)
+        if args.command == "chat":
+            return cmd_chat(args)
+        if args.command == "providers":
+            return cmd_providers(args)
+        parser.print_help()
+        return 0
+    except KeyError as exc:
+        # 未知 provider 等配置错误:友好提示而非 traceback
+        print(f"错误: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

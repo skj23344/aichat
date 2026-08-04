@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from .providers import PROVIDERS, Provider
+from .providers import Provider, get_provider
 
 CONFIG_PATH = Path.home() / ".aichatrc.ini"
 ENV_PROVIDER = "AICHAT_PROVIDER"
@@ -40,7 +40,7 @@ def load_config_file(path: Path = CONFIG_PATH) -> dict:
     if parser.has_section("aichat"):
         for key in ("provider", "api_key", "base_url", "model"):
             if parser.has_option("aichat", key):
-                data[key] = parser.get("aichat", key).strip()
+                data[key] = parser.get("aichat", key, raw=True).strip()
     return data
 
 
@@ -56,7 +56,7 @@ def build_settings(
     file_cfg = load_config_file(config_path)
 
     name = provider_name or os.environ.get(ENV_PROVIDER) or file_cfg.get("provider") or "openai"
-    provider = PROVIDERS[name]
+    provider = get_provider(name)
 
     key = (
         api_key

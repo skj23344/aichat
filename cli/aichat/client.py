@@ -50,7 +50,10 @@ class ChatClient:
         }
 
     def _url(self) -> str:
-        return self.settings.effective_base_url().rstrip("/") + "/chat/completions"
+        base = self.settings.effective_base_url()
+        if not base:
+            raise ChatError("未配置 API Base URL(custom provider 需 --base-url 或 AICHAT_BASE_URL)")
+        return base.rstrip("/") + "/chat/completions"
 
     def _request(self, messages: List[dict], stream: bool) -> urllib.request.Request:
         body = json.dumps(self._payload(messages, stream)).encode("utf-8")
@@ -65,32 +68,44 @@ class ChatClient:
             raise ChatError(f"网络错误: {exc.reason}") from exc
 
     @staticmethod
-    def _parse_sse_line(line: str) -> Optional[str]:
-        """解析一行 SSE(data: ...),返回文本增量;无内容返回 None。"""
-        line = line.strip()
-        if not line.startswith("data:"):
-            return None
-        data = line[len("data:"):].strip()
+    def _emit_sse_event(data: str) -> Iterator[str]:
+        """解析一个完整 SSE data 块,产出文本增量;流中含 error 时抛 ChatError。"""
         if not data or data == "[DONE]":
-            return None
+            return
         try:
             chunk = json.loads(data)
         except json.JSONDecodeError:
-            return None
+            return
+        error = chunk.get("error")
+        if error:
+            message = error.get("message", str(error)) if isinstance(error, dict) else str(error)
+            raise ChatError(f"流式响应错误: {message}")
         choices = chunk.get("choices") or []
         if not choices:
-            return None
+            return
         delta = choices[0].get("delta") or {}
-        return delta.get("content")
+        content = delta.get("content")
+        if content:
+            yield content
 
     def stream_chat(self, messages: List[dict]) -> Iterator[str]:
-        """流式对话,逐段产出文本增量。"""
+        """流式对话,逐段产出文本增量;支持跨行 data 块,流中出错时抛 ChatError。"""
         resp = self._open(messages, stream=True)
+        data_buf: List[str] = []
         for raw in resp:
             for line in raw.decode("utf-8", "replace").splitlines():
-                text = self._parse_sse_line(line)
-                if text:
-                    yield text
+                line = line.strip()
+                if not line:
+                    # 空行:SSE 事件结束,解析累积的 data 块
+                    if data_buf:
+                        yield from self._emit_sse_event("\n".join(data_buf))
+                        data_buf = []
+                    continue
+                if line.startswith("data:"):
+                    data_buf.append(line[len("data:"):].strip())
+                # 其他 SSE 字段(comment/event/id)忽略
+        if data_buf:
+            yield from self._emit_sse_event("\n".join(data_buf))
 
     def chat(self, messages: List[dict]) -> str:
         """非流式对话,返回完整回复文本。"""
@@ -100,6 +115,9 @@ class ChatClient:
         except json.JSONDecodeError as exc:
             raise ChatError("响应不是合法 JSON") from exc
         try:
-            return data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError) as exc:
+            message = data["choices"][0]["message"]
+            if message is None:
+                raise ChatError(f"响应缺少 choices[0].message: {data}")
+            return message["content"]
+        except (KeyError, IndexError, TypeError) as exc:
             raise ChatError(f"响应缺少 choices[0].message.content: {data}") from exc
